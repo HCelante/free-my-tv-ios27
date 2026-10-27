@@ -15,7 +15,7 @@ import translate  # noqa: E402  (the catalogues and the keys the web app uses)
 
 GENERIC = {'tmdbKey': '', 'tmdbRegion': '', 'latitude': '', 'longitude': '', 'city': '', 'language': 'auto',
            'currency': '', 'temperature': 'auto', 'theme': 'auto', 'showCrypto': True, 'hideAnimation': False, 'hideApps': [],
-           'shelfApps': [], 'drawerFirst': False}
+           'shelfApps': [], 'drawerFirst': False, 'watchmodeKey': '', 'traktClientId': '', 'traktClientSecret': ''}
 
 
 def config_from_args(args):
@@ -66,6 +66,9 @@ def read_config(path):
         'hideApps': [s.strip() for s in values.get('hide_apps', '').split(',') if s.strip()],
         'shelfApps': [s.strip() for s in values.get('shelf_apps', '').split(',') if s.strip()],
         'drawerFirst': values.get('drawer_first', 'false').lower() == 'true',
+        'watchmodeKey': values.get('watchmode_key', ''),
+        'traktClientId': values.get('trakt_client_id', ''),
+        'traktClientSecret': values.get('trakt_client_secret', ''),
     }
 
 
