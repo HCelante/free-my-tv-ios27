@@ -337,11 +337,15 @@
 
   function updateFocus() {
     var i, list;
-    list = $('tabs').children;
-    for (i = 0; i < list.length; i++) {
-      setClass(list[i], 'on', i === st.tab);
-      setClass(list[i], 'focus', st.zone === Z.TOP && st.top === i);
+    list = $('tabs').querySelectorAll('.tab');
+    for (i = 0; i < list.length; i++) setClass(list[i], 'on', i === st.tab);
+    // The lens slides under the tab on show (a transform); it turns white while the tabs have focus.
+    var lens = $('tabs').firstChild, on = list[st.tab];
+    if (lens && on) {
+      lens.style.width = on.offsetWidth + 'px';
+      lens.style.webkitTransform = lens.style.transform = 'translateX(' + on.offsetLeft + 'px)';
     }
+    setClass($('tabs'), 'focus', st.zone === Z.TOP && st.top < 3);
     list = $('buttons').children;
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.TOP && st.top === 3 + i);
     setClass($('quotes'), 'hide', st.zone === Z.TOP && st.top >= 3);
@@ -390,14 +394,14 @@
     return (r.left + r.right) / 2;
   }
 
-  // MARK: - Top: title, tabs, buttons, quotes
+  // MARK: - Top: time and weather, tabs, buttons, quotes
 
   var TAB_KIND = [null, 'movie', 'tv'];
 
   function renderTop() {
-    $('title').textContent = tr('For You');
     var tabs = $('tabs');
     tabs.innerHTML = '';
+    el('div', 'lens', tabs);
     var names = [tr('Explore'), tr('Movies'), tr('Shows')];
     for (var i = 0; i < 3; i++) {
       var t = el('button', 'tab', tabs, names[i]);
@@ -408,11 +412,13 @@
     var defs = [['live_tv', tr('light|Live TV')], ['hdmi', tr('HDMI Inputs')], ['settings', tr('light|Settings')]];
     for (var b = 0; b < 3; b++) {
       var r = el('button', 'round' + (b === 2 ? ' last' : ''), buttons);
-      r.style.left = (1596 + 88 * b) + 'px';
+      r.style.left = (1568 + 92 * b) + 'px';
       sym(defs[b][0], r);
       el('div', 'tip', r, defs[b][1]);
       hover(r, Z.TOP, 3 + b);
     }
+    // Inter comes after the first layout: the tabs widen then, and the lens has to follow.
+    try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(updateFocus); } catch (e) {}
   }
 
   function renderQuotes() {
@@ -532,9 +538,20 @@
     c.lastChild.textContent = formatDate('format|EEEE, MMMM d', d.getTime());
   }
 
+  /** The time and the weather now at the top left, as on an iPhone's status bar. */
+  function renderStatus() {
+    var s = $('status'), w = Data.weather, wx = s.lastChild;
+    s.firstChild.textContent = formatDate('format|h:mm', Date.now());
+    wx.innerHTML = '';
+    if (!w) return;
+    sym(Data.symbol(w.code, w.isDay), wx);
+    wx.appendChild(document.createTextNode(Data.degrees(w.temp)));
+  }
+
   /** On the minute, so the clock never runs late (the 30-second refresh could, by up to 30 s). */
   function tickClock() {
     renderClock();
+    renderStatus();
     setTimeout(tickClock, 60000 - Date.now() % 60000 + 50);
   }
 
@@ -553,7 +570,6 @@
     platter.style.width = (width + 2 * pad) + 'px';
     platter.style.top = (814 + 126 - th) + 'px';
     platter.style.height = (th + 2 * pad) + 'px';
-    $('quotes').style.right = (1920 - left - width) + 'px';
     var tiles = $('tiles');
     tiles.innerHTML = '';
     tileStep = tw + gap;
@@ -1592,6 +1608,7 @@
 
   Data.onChange(function () {
     renderQuotes();
+    renderStatus();
     renderCards();
     renderPanels();
     checkNight();
