@@ -257,6 +257,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 /* MARK: - Hero and picks: the focused pick large over its photo; below, a row of 16:9 cards that grow 9% focused. */
 
 #hero { position: absolute; left: 96px; bottom: 420px; width: 1000px; }
+#hero .ctx { margin-bottom: 10px; font-size: 26px; font-weight: 600; color: rgba(60, 60, 67, 0.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #hero .name {
   max-height: 2.1em;
   overflow: hidden;
@@ -267,6 +268,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   color: #000;
 }
 #hero .meta { margin-top: 18px; font-size: 28px; font-weight: 500; white-space: nowrap; color: rgba(60, 60, 67, 0.62); }
+#hero .bar { display: none; margin-top: 22px; width: 420px; height: 4px; border-radius: 2px; background: rgba(60, 60, 67, 0.18); overflow: hidden; }
+#hero .bar .fill { height: 100%; background: #000; border-radius: 2px; }
 #hero .play {
   display: inline-block;
   margin-top: 34px;
@@ -281,10 +284,25 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   white-space: nowrap;
 }
 #hero .play .sym { width: 34px; height: 34px; vertical-align: -8px; margin-right: 10px; }
+.night #hero .ctx { color: rgba(235, 235, 245, 0.62); }
 .night #hero .name { color: #FFF; }
 .night #hero .meta { color: rgba(235, 235, 245, 0.62); }
+.night #hero .bar { background: rgba(235, 235, 245, 0.22); }
+.night #hero .bar .fill { background: #FFF; }
 .night #hero .play { background: #FFF; color: #000; }
 .no-picks #hero { display: none; }
+.no-picks #rail { display: none; }
+
+#rail {
+  position: absolute;
+  left: 96px;
+  top: 650px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: rgba(60, 60, 67, 0.62);
+}
+.night #rail { color: rgba(235, 235, 245, 0.62); }
 @-webkit-keyframes hero-in { from { opacity: 0; -webkit-transform: translateY(14px); } to { opacity: 1; -webkit-transform: none; } }
 @keyframes hero-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 #hero.fresh { -webkit-animation: hero-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1); animation: hero-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1); }
@@ -326,6 +344,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .card .text { position: absolute; left: 80px; right: 18px; bottom: 17px; color: #FFF; }
 .card .title { font-size: 24px; font-weight: 700; line-height: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .sub { font-size: 19px; font-weight: 500; line-height: 24px; color: rgba(255, 255, 255, 0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .prog { position: absolute; left: 18px; right: 18px; bottom: 10px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.28); overflow: hidden; }
+.card .prog .fill { height: 100%; background: #FFF; border-radius: 2px; }
+.card.portrait { width: 134px; }
+.card.portrait .text { left: 12px; right: 12px; }
+.card.portrait .badge { left: 12px; bottom: 12px; width: 40px; height: 40px; }
+.card.portrait .title { font-size: 18px; line-height: 22px; }
+.card.portrait .sub { font-size: 16px; line-height: 20px; }
 .card::after {
   content: '';
   position: absolute;

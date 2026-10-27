@@ -454,21 +454,99 @@
 
   // MARK: - Picks and background
 
+  function whenAgo(at) {
+    if (!at) return '';
+    var m = Math.floor((Date.now() - at) / 60000), h;
+    if (m < 60) return trf('{n} min ago', {n: Math.max(1, m)});
+    h = Math.floor(m / 60);
+    if (h < 48) return trf('{n} h ago', {n: h});
+    return formatDate('format|MMM d', at);
+  }
+
+  function formatAdded(iso) {
+    if (!iso) return '';
+    var t = Date.parse(iso);
+    return isNaN(t) ? iso : formatDate('format|MMM d', t);
+  }
+
+  function heroContext(p) {
+    var parts = [], appName = p.service || '';
+    if (!appName && p.app) {
+      var a = Data.appFor(p.app);
+      appName = a ? a.title : '';
+    }
+    if (p.section === 'added' && p.addedAt) parts.push(trf('Added {date}', {date: formatAdded(p.addedAt)}));
+    else if (p.at) parts.push(trf('Watched {when}', {when: whenAgo(p.at)}));
+    if (p.episode) parts.push(p.episode);
+    if (appName) parts.push(appName);
+    return parts.join(' · ');
+  }
+
+  function markSection(items, kind, label) {
+    var out = [], i, p;
+    for (i = 0; items && i < items.length; i++) {
+      p = items[i];
+      p.section = kind;
+      p.sectionLabel = label;
+      out.push(p);
+    }
+    return out;
+  }
+
+  /** Sections for the current tab: Explore = watched (or trending), Movies = added, Shows = continue + added. */
+  function tabSections() {
+    var recent, label, picks, i;
+    if (st.tab === 0) {
+      recent = Data.recent();
+      if (recent.length) return [{label: tr('Recently watched'), kind: 'watched', items: recent}];
+      picks = Data.picks(null);
+      for (i = 0; i < picks.length; i++) picks[i].section = 'watched';
+      return [{label: tr('Trending'), kind: 'watched', items: picks}];
+    }
+    if (st.tab === 1) {
+      label = Data.addedIsFallback() ? tr('New releases') : tr('Recently added');
+      return [{label: label, kind: 'added', items: Data.added('movie')}];
+    }
+    label = Data.addedIsFallback() ? tr('New releases') : tr('Recently added');
+    return [
+      {label: tr('Continue watching'), kind: 'watched', items: Data.continueShows()},
+      {label: label, kind: 'added', items: Data.added('tv')}
+    ];
+  }
+
+  function flattenSections(sections) {
+    var out = [], i, j, items, p;
+    for (i = 0; i < sections.length; i++) {
+      items = markSection(sections[i].items, sections[i].kind, sections[i].label);
+      for (j = 0; j < items.length; j++) out.push(items[j]);
+    }
+    return out;
+  }
+
   function renderCards() {
-    var list = Data.picks(TAB_KIND[st.tab]);
-    var holder = $('cards');
+    var list = flattenSections(tabSections());
+    var holder = $('cards'), rail = $('rail');
     setClass(body, 'no-picks', !list.length);
     setClass(body, 'no-key', !Data.hasKey());   // as on Android: no tabs that could never show anything
     if (!Data.hasKey() && st.zone === Z.TOP && st.top < 3) st.top = 3;
     var same = list.length === cards.length;
-    for (var i = 0; same && i < list.length; i++) same = list[i].id === cards[i].id && list[i].backdrop === cards[i].backdrop && list[i].meta === cards[i].meta;
-    if (same && holder.children.length === list.length) return;
+    for (var i = 0; same && i < list.length; i++) {
+      same = list[i].id === cards[i].id && list[i].kind === cards[i].kind
+          && list[i].backdrop === cards[i].backdrop && list[i].meta === cards[i].meta
+          && list[i].progress === cards[i].progress && list[i].section === cards[i].section;
+    }
+    if (same && holder.children.length === list.length) {
+      if (list[st.card]) rail.textContent = list[st.card].sectionLabel || '';
+      return;
+    }
     cards = list;
     holder.innerHTML = '';
     hero = null;
     for (var c = 0; c < list.length; c++) {
-      var p = list[c], card = el('div', 'card', holder), app = Data.appFor(p.app);
-      el('div', 'img', card).style.backgroundImage = 'url(' + Data.image(p.backdrop, 'w780') + ')';
+      var p = list[c], portrait = p.section === 'added', card = el('div', 'card' + (portrait ? ' portrait' : ''), holder);
+      var app = Data.appFor(p.app);
+      var path = portrait ? (p.poster || p.backdrop) : (p.backdrop || p.poster);
+      el('div', 'img', card).style.backgroundImage = path ? 'url(' + Data.image(path, portrait ? 'w342' : 'w780') + ')' : '';
       var info = el('div', 'info', card);
       if (app) {
         var badge = el('div', 'badge', info);
@@ -476,25 +554,43 @@
         face(app, badge, 18);
       }
       var text = el('div', 'text', info);
-      el('div', 'title', text, p.title);
-      if (p.service) el('div', 'sub', text, p.service);
+      el('div', 'title', text, p.title || '');
+      if (p.episode) el('div', 'sub', text, p.episode);
+      else if (p.section === 'added' && p.addedAt) el('div', 'sub', text, formatAdded(p.addedAt));
+      else if (p.service) el('div', 'sub', text, p.service);
+      if (p.progress > 0 && p.progress < 100) {
+        var bar = el('div', 'prog', card);
+        el('div', 'fill', bar).style.width = Math.max(4, Math.min(100, p.progress)) + '%';
+      }
       hover(card, Z.CARDS, c);
     }
     st.card = Math.min(st.card, Math.max(0, list.length - 1));
+    rail.textContent = list[st.card] ? (list[st.card].sectionLabel || '') : '';
     if (!list.length && st.zone === Z.CARDS) st.zone = Z.SHELF;
     updateFocus();
   }
 
-  var CARD_W = 356, CARD_STEP = 384, ROW_W = 1728, BADGE = 48, BADGE_CLIP = squircle(BADGE);
+  var CARD_W = 356, CARD_W_TALL = 134, CARD_GAP = 28, ROW_W = 1728, BADGE = 48, BADGE_CLIP = squircle(BADGE);
+
+  function cardSize(p) { return (p && p.section === 'added') ? CARD_W_TALL : CARD_W; }
 
   /**
    * The row scrolls a card at a time to keep the focused one in view (the holder slides: a transform, which older TVs
    * animate), and the hero shows that card, also while focus is elsewhere.
    */
   function layoutCards() {
-    var holder = $('cards'), nodes = holder.children, scroll = Math.max(0, st.card * CARD_STEP + CARD_W - ROW_W);
-    for (var i = 0; i < nodes.length; i++) nodes[i].style.left = (i * CARD_STEP) + 'px';
+    var holder = $('cards'), nodes = holder.children, left = 0, positions = [], i, w, scroll = 0, focusLeft = 0, focusW = CARD_W;
+    for (i = 0; i < nodes.length; i++) {
+      w = cardSize(cards[i]);
+      positions.push(left);
+      nodes[i].style.left = left + 'px';
+      nodes[i].style.width = w + 'px';
+      if (i === st.card) { focusLeft = left; focusW = w; }
+      left += w + CARD_GAP;
+    }
+    scroll = Math.max(0, focusLeft + focusW - ROW_W);
     holder.style.webkitTransform = holder.style.transform = 'translateX(' + (-scroll) + 'px)';
+    if (cards[st.card]) $('rail').textContent = cards[st.card].sectionLabel || '';
     showHero(cards[st.card]);
   }
 
@@ -504,17 +600,28 @@
   function showHero(p) {
     if (p === hero) return;
     hero = p;
-    art(p ? Data.image(p.backdrop, 'w1280') : '');
-    backdrop(p ? Data.image(p.backdrop, 'w300') : '');
+    var path = p ? (p.backdrop || p.poster) : '';
+    art(path ? Data.image(path, p.backdrop ? 'w1280' : 'w780') : '');
+    backdrop(path ? Data.image(path, 'w300') : '');
     if (!p) return;
-    var h = $('hero'), name = h.children[0], play = h.children[2];
-    name.textContent = p.title;
-    name.style.fontSize = (p.title.length > 30 ? 64 : p.title.length > 18 ? 80 : 96) + 'px';
-    h.children[1].textContent = p.meta || '';
+    var h = $('hero'), ctx = h.querySelector('.ctx'), name = h.querySelector('.name'), meta = h.querySelector('.meta');
+    var bar = h.querySelector('.bar'), fill = bar.querySelector('.fill'), play = h.querySelector('.play');
+    ctx.textContent = heroContext(p);
+    name.textContent = p.title || '';
+    name.style.fontSize = ((p.title || '').length > 30 ? 64 : (p.title || '').length > 18 ? 80 : 96) + 'px';
+    meta.textContent = p.meta || '';
+    if (p.progress > 0 && p.progress < 100) {
+      bar.style.display = '';
+      fill.style.width = Math.max(4, Math.min(100, p.progress)) + '%';
+    } else {
+      bar.style.display = 'none';
+    }
     play.innerHTML = '';
     play.style.display = p.service ? '' : 'none';
-    sym('play', play);
-    el('span', '', play, p.service || '');
+    if (p.service) {
+      sym('play', play);
+      el('span', '', play, p.service);
+    }
     setClass(h, 'fresh', false);
     void h.offsetWidth;   // restarts the animation
     setClass(h, 'fresh', true);
@@ -1336,6 +1443,7 @@
         return;
       case Z.CARDS:
         var p = cards[st.card], app = p && Data.appFor(p.app);
+        if (p && p.kind && p.id && window.History) History.record(p.kind, p.id, p.app || '');
         if (app) launcher(app.id, app.title)();
         return;
       case Z.SHELF:
