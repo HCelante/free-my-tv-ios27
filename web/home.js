@@ -114,6 +114,27 @@
     return Math.max(18, Math.min(max, Math.floor(width * 0.8 / (Math.max(4, title.length) * 0.56))));
   }
 
+  /**
+   * An app icon's outline, as on iOS: a superellipse (n = 5), as a clip-path for a square of `size` px. Empty where the
+   * TV doesn't take path() in clip-path: the CSS's rounded corners stay.
+   */
+  function squircle(size) {
+    function sgn(x) { return x > 0 ? 1 : x < 0 ? -1 : 0; }
+    var n = 5, r = size / 2, d = '';
+    for (var i = 0; i < 96; i++) {
+      var a = i / 96 * 2 * Math.PI, c = Math.cos(a), s = Math.sin(a);
+      d += (i ? ' L' : 'M') + (r + r * sgn(c) * Math.pow(Math.abs(c), 2 / n)).toFixed(2) + ' '
+          + (r + r * sgn(s) * Math.pow(Math.abs(s), 2 / n)).toFixed(2);
+    }
+    var path = "path('" + d + " Z')";
+    try { if (window.CSS && CSS.supports && CSS.supports('clip-path', path)) return path; } catch (e) {}
+    return '';
+  }
+
+  function clip(node, path) {
+    if (path) node.style.webkitClipPath = node.style.clipPath = path;
+  }
+
   // MARK: - Logos
 
   // The TV's icons are small squares with their own background (white behind Netflix, black behind Max). Like the
@@ -437,51 +458,66 @@
     var list = Data.picks(TAB_KIND[st.tab]);
     var holder = $('cards');
     setClass(body, 'no-picks', !list.length);
-    setClass(body, 'no-key', !Data.hasKey());   // as on Android: no title or tabs that could never show anything
+    setClass(body, 'no-key', !Data.hasKey());   // as on Android: no tabs that could never show anything
     if (!Data.hasKey() && st.zone === Z.TOP && st.top < 3) st.top = 3;
     var same = list.length === cards.length;
     for (var i = 0; same && i < list.length; i++) same = list[i].id === cards[i].id && list[i].backdrop === cards[i].backdrop && list[i].meta === cards[i].meta;
     if (same && holder.children.length === list.length) return;
     cards = list;
     holder.innerHTML = '';
+    hero = null;
     for (var c = 0; c < list.length; c++) {
-      var p = list[c], card = el('div', 'card', holder);
-      var img = el('div', 'img', card);
-      // Narrow: the poster (the backdrop cropped without one); the wide card fades its backdrop in over it, loaded then.
-      var poster = el('div', 'layer', img);
-      poster.style.backgroundImage = 'url(' + (p.poster ? Data.image(p.poster, 'w342') : Data.image(p.backdrop, 'w780')) + ')';
-      el('div', 'layer back', img);
-      el('div', 'name', card, p.title);
-      if (p.meta) el('div', 'meta', card, p.meta);
+      var p = list[c], card = el('div', 'card', holder), app = Data.appFor(p.app);
+      el('div', 'img', card).style.backgroundImage = 'url(' + Data.image(p.backdrop, 'w780') + ')';
+      var info = el('div', 'info', card);
+      if (app) {
+        var badge = el('div', 'badge', info);
+        clip(badge, BADGE_CLIP);
+        face(app, badge, 18);
+      }
+      var text = el('div', 'text', info);
+      el('div', 'title', text, p.title);
+      if (p.service) el('div', 'sub', text, p.service);
       hover(card, Z.CARDS, c);
     }
     st.card = Math.min(st.card, Math.max(0, list.length - 1));
     if (!list.length && st.zone === Z.CARDS) st.zone = Z.SHELF;
-    backdrop(list.length ? Data.image(list[0].backdrop, 'w300') : '');
-    art(list.length ? Data.image(list[0].backdrop, 'w1280') : '');
     updateFocus();
   }
 
+  var CARD_W = 356, CARD_STEP = 384, ROW_W = 1728, BADGE = 48, BADGE_CLIP = squircle(BADGE);
+
   /**
-   * The card with focus (st.card, also while focus is elsewhere) is the wide one, the others narrow; past the third the
-   * row scrolls a card at a time (the holder slides), and the cards at the edges lose their text. Only the holder's
-   * transform and the backdrop's opacity animate: the widths change at once (older TVs).
+   * The row scrolls a card at a time to keep the focused one in view (the holder slides: a transform, which older TVs
+   * animate), and the hero shows that card, also while focus is elsewhere.
    */
   function layoutCards() {
-    var holder = $('cards'), nodes = holder.children, left = 80, scroll = Math.max(0, st.card - 2) * 360;
-    for (var i = 0; i < nodes.length; i++) {
-      var wide = i === st.card, w = wide ? 1040 : 320, n = nodes[i], at = left - scroll;
-      n.style.left = left + 'px';
-      n.style.width = w + 'px';
-      setClass(n, 'wide', wide);
-      setClass(n, 'edge', at < 0 || at > 1740);
-      if (wide && !n.getAttribute('data-back') && cards[i]) {
-        n.setAttribute('data-back', '1');
-        n.querySelector('.back').style.backgroundImage = 'url(' + Data.image(cards[i].backdrop, 'w1280') + ')';
-      }
-      left += w + 40;
-    }
+    var holder = $('cards'), nodes = holder.children, scroll = Math.max(0, st.card * CARD_STEP + CARD_W - ROW_W);
+    for (var i = 0; i < nodes.length; i++) nodes[i].style.left = (i * CARD_STEP) + 'px';
     holder.style.webkitTransform = holder.style.transform = 'translateX(' + (-scroll) + 'px)';
+    showHero(cards[st.card]);
+  }
+
+  var hero = null;
+
+  /** The pick, large: its photo behind, its name, what it is, and the app it opens in. */
+  function showHero(p) {
+    if (p === hero) return;
+    hero = p;
+    art(p ? Data.image(p.backdrop, 'w1280') : '');
+    backdrop(p ? Data.image(p.backdrop, 'w300') : '');
+    if (!p) return;
+    var h = $('hero'), name = h.children[0], play = h.children[2];
+    name.textContent = p.title;
+    name.style.fontSize = (p.title.length > 30 ? 64 : p.title.length > 18 ? 80 : 96) + 'px';
+    h.children[1].textContent = p.meta || '';
+    play.innerHTML = '';
+    play.style.display = p.service ? '' : 'none';
+    sym('play', play);
+    el('span', '', play, p.service || '');
+    setClass(h, 'fresh', false);
+    void h.offsetWidth;   // restarts the animation
+    setClass(h, 'fresh', true);
   }
 
   var bgUrl = null, bgFront = 'bgA';

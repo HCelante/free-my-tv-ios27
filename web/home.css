@@ -254,106 +254,95 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .night .round.focus { background: #FFF; color: #1D1D1F; }
 .night .round.focus .tip { color: #F5F5F7; }
 
-/* MARK: - Picks: the card with focus is wide, the others narrow (posters); it grows 5%, rises and its edge lights up. */
+/* MARK: - Hero and picks: the focused pick large over its photo; below, a row of 16:9 cards that grow 9% focused. */
+
+#hero { position: absolute; left: 96px; bottom: 420px; width: 1000px; }
+#hero .name {
+  max-height: 2.1em;
+  overflow: hidden;
+  font-size: 96px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  color: #000;
+}
+#hero .meta { margin-top: 18px; font-size: 28px; font-weight: 500; white-space: nowrap; color: rgba(60, 60, 67, 0.62); }
+#hero .play {
+  display: inline-block;
+  margin-top: 34px;
+  height: 72px;
+  padding: 0 40px 0 30px;
+  border-radius: 36px;
+  background: #000;
+  color: #FFF;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 72px;
+  white-space: nowrap;
+}
+#hero .play .sym { width: 34px; height: 34px; vertical-align: -8px; margin-right: 10px; }
+.night #hero .name { color: #FFF; }
+.night #hero .meta { color: rgba(235, 235, 245, 0.62); }
+.night #hero .play { background: #FFF; color: #000; }
+.no-picks #hero { display: none; }
+@-webkit-keyframes hero-in { from { opacity: 0; -webkit-transform: translateY(14px); } to { opacity: 1; -webkit-transform: none; } }
+@keyframes hero-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+#hero.fresh { -webkit-animation: hero-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1); animation: hero-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.lite #hero.fresh { -webkit-animation: none; animation: none; }
 
 #cards {
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 96px;
+  top: 694px;
   -webkit-transition: -webkit-transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
   transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
-
 .card {
   position: absolute;
-  top: 262px;
-  height: 442px;
-  -webkit-transition: -webkit-transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15);
-  transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15);
-}
-.card .img {
-  position: absolute;
-  left: 0;
   top: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 18px;
+  width: 356px;
+  height: 200px;
+  border-radius: 30px;
   overflow: hidden;
-  background-color: #DADADF;
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
-  -webkit-transition: box-shadow 0.22s;
-  transition: box-shadow 0.22s;
+  background: #D1D1D6;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  -webkit-transition: -webkit-transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15), box-shadow 0.22s;
+  transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15), box-shadow 0.22s;
 }
-.card .layer {
+.card .img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background-size: cover; background-position: center; }
+.card .info {
   position: absolute;
   left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
+  right: 0;
+  bottom: 0;
+  height: 100px;
+  background: -webkit-linear-gradient(top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.72));
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.72));
 }
-.card .back {
-  opacity: 0;
-  -webkit-transition: opacity 0.3s;
-  transition: opacity 0.3s;
-}
-.card.wide .back { opacity: 1; }
-.card .img::after {
+.card .badge { position: absolute; left: 18px; bottom: 18px; width: 48px; height: 48px; border-radius: 11px; overflow: hidden; color: #FFF; }
+.card .badge img { position: absolute; left: 50%; top: 50%; max-width: 80%; max-height: 60%; -webkit-transform: translate(-50%, -50%); transform: translate(-50%, -50%); }
+.card .badge img.logo { width: 80%; height: 46%; max-width: none; max-height: none; object-fit: contain; }
+.card .badge .word { position: absolute; left: 3px; right: 3px; top: 50%; margin-top: -11px; height: 22px; line-height: 22px; text-align: center; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .text { position: absolute; left: 80px; right: 18px; bottom: 17px; color: #FFF; }
+.card .title { font-size: 24px; font-weight: 700; line-height: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .sub { font-size: 19px; font-weight: 500; line-height: 24px; color: rgba(255, 255, 255, 0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card::after {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
   right: 0;
   bottom: 0;
-  border-radius: 18px;
-  box-shadow: inset 0 0 0 2.5px rgba(255, 255, 255, 0.85);
-  background: -webkit-linear-gradient(-60deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 55%);
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 55%);
+  border-radius: 30px;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.9);
   opacity: 0;
   -webkit-transition: opacity 0.17s;
   transition: opacity 0.17s;
 }
-.card.focus { -webkit-transform: translateY(-6px) scale(1.05); transform: translateY(-6px) scale(1.05); z-index: 2; }
-.card.focus .img { box-shadow: 0 24px 46px rgba(0, 0, 0, 0.34); }
-.card.focus .img::after { opacity: 1; }
-.card .name {
-  position: absolute;
-  left: 0;
-  top: 464px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 31px;
-  font-weight: 600;
-  letter-spacing: 0.012em;
-  color: #1D1D1F;
-  -webkit-transition: color 2s;
-  transition: color 2s;
-}
-.card .meta {
-  position: absolute;
-  left: 0;
-  top: 506px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 25px;
-  font-weight: 500;
-  color: #6E6E73;
-  opacity: 0;
-  -webkit-transition: opacity 0.3s;
-  transition: opacity 0.3s;
-}
-.card.wide .meta { opacity: 1; }
-.card.edge .name, .card.edge .meta { visibility: hidden; }
-.night .card .img { background-color: #2C2C2E; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32); }
-.night .card .name { color: #F5F5F7; }
-.night .card .meta { color: rgba(245, 245, 247, 0.62); }
+.card.focus { -webkit-transform: scale(1.09); transform: scale(1.09); box-shadow: 0 26px 50px rgba(0, 0, 0, 0.34); z-index: 2; }
+.card.focus::after { opacity: 1; }
+.night .card { background: #2C2C2E; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
+.night .card.focus { box-shadow: 0 26px 50px rgba(0, 0, 0, 0.7); }
 
 /* Without a TMDB key (or picks yet): the date and the time instead of the cards. */
 #clock {
