@@ -28,6 +28,20 @@
     return s;
   }
 
+  /** Liquid Glass's blur (glass.css) where the TV has backdrop-filter and isn't lite; elsewhere home.css's frost. */
+  function loadGlass() {
+    var ok = false;
+    try {
+      ok = !!(window.CSS && CSS.supports && (CSS.supports('backdrop-filter', 'blur(1px)')
+          || CSS.supports('-webkit-backdrop-filter', 'blur(1px)')));
+    } catch (e) {}
+    if (!ok || /(^| )lite( |$)/.test(document.documentElement.className)) return;
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'glass.css';
+    document.getElementsByTagName('head')[0].appendChild(link);
+  }
+
   function coin(i, parent) {
     var c = window.COINS && window.COINS[i];
     if (!c) return;
@@ -1587,6 +1601,7 @@
   // LG's screensaver waits only when ours will show: not under a sheet (ours waits there), and not without photos.
   TV.holdScreenSaver(function () { return !sheetOpen() && saverPhotos().length > 0; });
   fit();
+  loadGlass();
   renderTop();
   tickClock();
   loadApps(function () {

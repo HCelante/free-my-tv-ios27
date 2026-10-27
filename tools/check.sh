@@ -38,9 +38,15 @@ if [ "$what" = all ] || [ "$what" = web ]; then
     echo "web/ calls something older TVs don't have (above)." >&2
     exit 1
   fi
-  # Nor do they have CSS custom properties, grid or backdrop-filter (home.css says why).
-  if grep -nE '(^|[{;])[[:space:]]*(--[a-zA-Z-]+[[:space:]]*:|[a-z-]+[[:space:]]*:[^;{}]*var\(|display[[:space:]]*:[[:space:]]*(inline-)?grid([^a-z-]|$)|grid-[a-z-]+[[:space:]]*:|(-webkit-)?backdrop-filter[[:space:]]*:)' web/*.css; then
+  # Nor do they have CSS custom properties, grid or backdrop-filter (home.css says why). glass.css is the one file
+  # with backdrop-filter: home.js loads it only on TVs that have it and aren't lite. Variables and grid stay out of it.
+  css="$(ls web/*.css | grep -v '^web/glass\.css$')"
+  if grep -nE '(^|[{;])[[:space:]]*(--[a-zA-Z-]+[[:space:]]*:|[a-z-]+[[:space:]]*:[^;{}]*var\(|display[[:space:]]*:[[:space:]]*(inline-)?grid([^a-z-]|$)|grid-[a-z-]+[[:space:]]*:|(-webkit-)?backdrop-filter[[:space:]]*:)' $css; then
     echo "web/ uses CSS older TVs don't have (above)." >&2
+    exit 1
+  fi
+  if [ -f web/glass.css ] && grep -nE '(^|[{;])[[:space:]]*(--[a-zA-Z-]+[[:space:]]*:|[a-z-]+[[:space:]]*:[^;{}]*var\(|display[[:space:]]*:[[:space:]]*(inline-)?grid([^a-z-]|$)|grid-[a-z-]+[[:space:]]*:)' web/glass.css; then
+    echo "web/glass.css uses CSS variables or grid (above)." >&2
     exit 1
   fi
 fi
