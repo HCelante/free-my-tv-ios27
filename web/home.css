@@ -17,7 +17,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #F5F5F7;
+  background: #F2F2F7;
 }
 
 body {
@@ -53,20 +53,53 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 /* MARK: - Background: the first pick's photo, very blurred and almost white (almost black at night). */
 
-#sky { background: #EBEBEF; }
+#sky { background: #F2F2F7; }
 #sky .grad { position: absolute; left: 0; top: 0; width: 100%; height: 100%; -webkit-transition: opacity 2s; transition: opacity 2s; }
-#sky .day { background: -webkit-linear-gradient(top, #F5F5F7, #E2E2E7); background: linear-gradient(#F5F5F7, #E2E2E7); }
-#sky .night { background: -webkit-linear-gradient(top, #1C1C1E, #0B0B0D); background: linear-gradient(#1C1C1E, #0B0B0D); opacity: 0; }
+#sky .day { background: -webkit-linear-gradient(top, #F2F2F7, #E5E5EA); background: linear-gradient(#F2F2F7, #E5E5EA); }
+#sky .night { background: -webkit-linear-gradient(top, #111113, #000); background: linear-gradient(#111113, #000); opacity: 0; }
 #sky canvas { position: absolute; left: -4%; top: -4%; width: 108%; height: 108%; opacity: 0; -webkit-transition: opacity 0.8s; transition: opacity 0.8s; }
 #sky canvas.on { opacity: 1; }
-#sky .veil { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: rgba(245, 245, 247, 0.74); -webkit-transition: background-color 2s; transition: background-color 2s; }
+#sky .veil { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: rgba(242, 242, 247, 0.74); -webkit-transition: background-color 2s; transition: background-color 2s; }
 #sky .lift { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #FFF; opacity: 0; -webkit-transition: opacity 0.45s, background-color 2s; transition: opacity 0.45s, background-color 2s; }
 .night #sky .day { opacity: 0; }
 .night #sky .night { opacity: 1; }
-.night #sky .veil { background: rgba(11, 11, 13, 0.78); }
+.night #sky .veil { background: rgba(0, 0, 0, 0.8); }
 .night #sky .lift { background: #000; }
 .drawer-open #sky .lift { opacity: 0.32; }
 .night.drawer-open #sky .lift { opacity: 0.42; }
+
+/* The focused pick's photo, the width of the screen, fading into the sky below and to the left (two layers cross-fade). */
+#art { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; -webkit-transition: opacity 0.4s; transition: opacity 0.4s; }
+#art .pic {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  background-size: cover;
+  background-position: center top;
+  opacity: 0;
+  -webkit-mask-image: -webkit-linear-gradient(top, #000 46%, rgba(0, 0, 0, 0) 80%);
+  -webkit-mask-image: linear-gradient(#000 46%, rgba(0, 0, 0, 0) 80%);
+  mask-image: linear-gradient(#000 46%, rgba(0, 0, 0, 0) 80%);
+  -webkit-transition: opacity 0.6s;
+  transition: opacity 0.6s;
+}
+#art .pic.on { opacity: 1; }
+#art .scrim {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  background: -webkit-linear-gradient(top, rgba(242, 242, 247, 0.5), rgba(242, 242, 247, 0) 24%), -webkit-linear-gradient(left, rgba(242, 242, 247, 0.96), rgba(242, 242, 247, 0.78) 32%, rgba(242, 242, 247, 0) 64%);
+  background: linear-gradient(rgba(242, 242, 247, 0.5), rgba(242, 242, 247, 0) 24%), linear-gradient(90deg, rgba(242, 242, 247, 0.96), rgba(242, 242, 247, 0.78) 32%, rgba(242, 242, 247, 0) 64%);
+}
+.night #art .scrim {
+  background: -webkit-linear-gradient(top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 24%), -webkit-linear-gradient(left, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0.7) 32%, rgba(0, 0, 0, 0) 64%);
+  background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 24%), linear-gradient(90deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0.7) 32%, rgba(0, 0, 0, 0) 64%);
+}
+.no-picks #art { opacity: 0; }
 
 /* MARK: - Moving parts: the top fades and everything rises when the drawer opens. */
 

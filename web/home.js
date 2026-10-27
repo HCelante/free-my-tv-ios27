@@ -452,6 +452,7 @@
     st.card = Math.min(st.card, Math.max(0, list.length - 1));
     if (!list.length && st.zone === Z.CARDS) st.zone = Z.SHELF;
     backdrop(list.length ? Data.image(list[0].backdrop, 'w300') : '');
+    art(list.length ? Data.image(list[0].backdrop, 'w1280') : '');
     updateFocus();
   }
 
@@ -497,6 +498,30 @@
       setClass(canvas, 'on', true);
       setClass($(bgFront), 'on', false);
       bgFront = next;
+    };
+    img.src = url;
+  }
+
+  var artUrl = null, artFront = 0;
+
+  /** The focused pick's photo behind the hero: the next layer fades in once its image has loaded (opacity only). */
+  function art(url) {
+    if (url === artUrl) return;
+    artUrl = url;
+    var pics = $('art').querySelectorAll('.pic');
+    if (!url) {
+      setClass(pics[0], 'on', false);
+      setClass(pics[1], 'on', false);
+      return;
+    }
+    var img = new Image();
+    img.onload = function () {
+      if (artUrl !== url) return;
+      var next = 1 - artFront;
+      pics[next].style.backgroundImage = 'url(' + url + ')';
+      setClass(pics[next], 'on', true);
+      setClass(pics[artFront], 'on', false);
+      artFront = next;
     };
     img.src = url;
   }
