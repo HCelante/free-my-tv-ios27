@@ -66,6 +66,9 @@ var Prefs = (function () {
     tmdbKey: function () { return String(pick('tmdbKey', CONFIG.tmdbKey || '')).trim(); },
     /** True when the key in use was typed on the TV (Remove takes it back to config.properties'). */
     tmdbKeyOnTV: function () { return v.tmdbKey !== undefined; },
+    /** Watchmode key typed on the TV, or config.properties' ('' for none). */
+    watchmodeKey: function () { return String(pick('watchmodeKey', CONFIG.watchmodeKey || '')).trim(); },
+    watchmodeKeyOnTV: function () { return v.watchmodeKey !== undefined; },
     setCity: function (name, lat, lon) { v.city = name; v.latitude = lat; v.longitude = lon; save(); this.version++; },
     /** Streaming services (keys like "netflix") whose titles are left out of the picks. */
     serviceOff: function (key) { return pick('servicesOff', []).indexOf(key) >= 0; },
@@ -586,6 +589,209 @@ var Data = (function () {
     return out;
   }
 
+  // MARK: - Recently watched and newly added (Explore / Movies / Shows)
+
+  // Watchmode source_id → Free My TV service key (same keys as usable()).
+  var WATCHMODE_SOURCES = {203: 'netflix', 26: 'prime', 387: 'max', 372: 'disney'};
+
+  var addedStore = stored('added') || {};
+  var addedList = addedStore.list || [], addedAt = addedStore.at || 0, addedFallback = !!addedStore.fallback;
+  var fetchingAdded = false, recentMeta = stored('recentMeta') || {}, enrichingRecent = false;
+
+  function saveAdded() { store('added', {list: addedList, at: addedAt, fallback: addedFallback}); }
+
+  function rawRecent() {
+    var byKey = {}, i, k, list, src;
+    function add(item) {
+      if (!item || !item.id) return;
+      k = item.kind + ':' + item.id;
+      if (!byKey[k] || item.at > byKey[k].at) byKey[k] = item;
+    }
+    list = (window.History && History.list) ? History.list() : [];
+    for (i = 0; i < list.length; i++) add(list[i]);
+    if (window.Trakt) {
+      src = Trakt.history().concat(Trakt.playback());
+      for (i = 0; i < src.length; i++) add(src[i]);
+    }
+    list = [];
+    for (k in byKey) if (byKey.hasOwnProperty(k)) list.push(byKey[k]);
+    list.sort(function (a, b) { return b.at - a.at; });
+    return list;
+  }
+
+  /** Explore: watched recently, newest first. One row per show. Enriched with TMDB fields when known. */
+  function recent() {
+    var list = rawRecent(), out = [], i, r, m, p;
+    for (i = 0; i < list.length; i++) {
+      r = list[i];
+      m = recentMeta[r.kind + ':' + r.id] || {};
+      p = {
+        kind: r.kind, id: r.id, at: r.at,
+        app: r.app || m.app || null,
+        progress: r.progress || 0,
+        episode: r.episode || '',
+        title: m.title || '',
+        backdrop: m.backdrop || '',
+        poster: m.poster || '',
+        meta: m.meta || '',
+        service: m.service || '',
+        detailed: !!m.detailed,
+        addedAt: '',
+        section: 'watched'
+      };
+      out.push(p);
+    }
+    return out;
+  }
+
+  function continueShows() {
+    return recent().filter(function (x) { return x.kind === 'tv'; });
+  }
+
+  function added(kind) {
+    var skip = {}, cont, i, out = [];
+    if (kind === 'tv') {
+      cont = continueShows();
+      for (i = 0; i < cont.length; i++) skip[cont[i].id] = true;
+    }
+    for (i = 0; i < addedList.length; i++) {
+      if (addedList[i].kind === kind && !skip[addedList[i].id]) out.push(addedList[i]);
+    }
+    return out;
+  }
+
+  function refreshRecentMeta() {
+    if (!KEY || enrichingRecent) return;
+    var todo = [], list = recent(), i, p;
+    for (i = 0; i < list.length && todo.length < 25; i++) {
+      if (!list[i].detailed) todo.push(list[i]);
+    }
+    if (!todo.length) return;
+    enrichingRecent = true;
+    each(todo, function (item, next) {
+      p = {id: item.id, kind: item.kind, title: '', backdrop: '', poster: '', meta: '', app: item.app || null, detailed: false};
+      details(p, function (err) {
+        if (!err) {
+          recentMeta[keyOf(p)] = {
+            title: p.title, backdrop: p.backdrop, poster: p.poster, meta: p.meta,
+            app: p.app || item.app || null, service: p.service || '', detailed: true
+          };
+          store('recentMeta', recentMeta);
+          changed();
+        }
+        next();
+      });
+    }, function () { enrichingRecent = false; });
+  }
+
+  function providerIds(done) {
+    tmdb('/watch/providers/movie?language=' + lang() + '&watch_region=' + REGION, function (err, res) {
+      if (err) { done(err); return; }
+      var ids = [], i, s;
+      for (i = 0; res.results && i < res.results.length; i++) {
+        s = service(res.results[i].provider_name, res.results[i].provider_id);
+        if (s && usable(s[1])) ids.push(res.results[i].provider_id);
+      }
+      done(null, ids);
+    });
+  }
+
+  function fetchAddedTmdb(done) {
+    if (!KEY) { done(new Error('no TMDB key')); return; }
+    providerIds(function (err, ids) {
+      if (err) { done(err); return; }
+      if (!ids.length) { done(new Error('no streaming apps')); return; }
+      var common = '&language=' + lang() + '&watch_region=' + REGION + '&with_watch_monetization_types=flatrate&include_adult=false'
+          + '&with_watch_providers=' + encodeURIComponent(ids.join('|'))
+          + (CONFIG.hideAnimation ? '&without_genres=' + ANIMATION : '');
+      var candidates = [];
+      tmdb('/discover/movie?sort_by=primary_release_date.desc&primary_release_date.gte=' + day(-30)
+          + '&primary_release_date.lte=' + day(0) + '&vote_count.gte=5' + common, function (e1, r1) {
+        var j;
+        for (j = 0; !e1 && r1 && r1.results && j < r1.results.length && j < 20; j++) {
+          addPick(candidates, r1.results[j], 'movie');
+        }
+        tmdb('/discover/tv?sort_by=first_air_date.desc&first_air_date.gte=' + day(-30)
+            + '&first_air_date.lte=' + day(0) + '&vote_count.gte=5' + common, function (e2, r2) {
+          for (j = 0; !e2 && r2 && r2.results && j < r2.results.length && j < 20; j++) {
+            addPick(candidates, r2.results[j], 'tv');
+          }
+          var out = [];
+          each(candidates, function (p, next) {
+            details(p, function (de) {
+              if (!de && p.app && (p.backdrop || p.poster)) {
+                p.addedAt = day(0);
+                p.section = 'added';
+                out.push(p);
+              }
+              next();
+            });
+          }, function () { done(null, out); });
+        });
+      });
+    });
+  }
+
+  function fetchAddedWatchmode(done) {
+    var key = Prefs.watchmodeKey();
+    // Watchmode wants YYYYMMDD; day() is YYYY-MM-DD.
+    var start = day(-30).replace(/-/g, '');
+    get('https://api.watchmode.com/v1/releases/?limit=250&start_date=' + start,
+        {'X-API-Key': key, Accept: 'application/json'}, function (err, res) {
+      if (err) { done(err); return; }
+      var rows = (res && res.releases) || [], seen = {}, candidates = [], i, r, svc, kind;
+      for (i = 0; i < rows.length; i++) {
+        r = rows[i];
+        kind = r.tmdb_type === 'movie' || r.tmdb_type === 'tv' ? r.tmdb_type : '';
+        svc = WATCHMODE_SOURCES[r.source_id];
+        if (!kind || !r.tmdb_id || !svc || !usable(svc)) continue;
+        if (seen[kind + ':' + r.tmdb_id]) continue;
+        seen[kind + ':' + r.tmdb_id] = true;
+        candidates.push({
+          id: r.tmdb_id, kind: kind, title: r.title || '', backdrop: '', poster: '',
+          meta: '', app: svc, detailed: false, addedAt: r.source_release_date || '', section: 'added'
+        });
+        if (candidates.length >= 40) break;
+      }
+      var out = [];
+      each(candidates, function (p, next) {
+        details(p, function (de) {
+          // details() confirms the title is on a usable app in this region (Brazil when REGION=BR).
+          if (!de && p.app && (p.backdrop || p.poster)) out.push(p);
+          next();
+        });
+      }, function () { done(null, out); });
+    });
+  }
+
+  function refreshAdded() {
+    if (fetchingAdded || !installed.length) return;
+    if (addedAt && Date.now() - addedAt < 12 * 3600000 && addedList.length) return;
+    fetchingAdded = true;
+    function finish(err, list, fallback) {
+      if (err && !fallback) {
+        fetchAddedTmdb(function (e2, list2) { finish(e2, list2 || [], true); });
+        return;
+      }
+      fetchingAdded = false;
+      if (!err && list) {
+        addedList = list;
+        addedAt = Date.now();
+        addedFallback = !!fallback;
+        saveAdded();
+        changed();
+      }
+    }
+    if (!Prefs.watchmodeKey()) {
+      fetchAddedTmdb(function (err, list) { finish(err, list, true); });
+      return;
+    }
+    fetchAddedWatchmode(function (err, list) {
+      if (err) { finish(err, null, false); return; }
+      finish(null, list, false);
+    });
+  }
+
   // MARK: - Formatting
 
   function fmt(v, digits) {
@@ -606,7 +812,14 @@ var Data = (function () {
     appFor: appFor,
     usable: usable,
     services: services,
-    refresh: function () { refreshWeather(); refreshPrices(); refreshRecs(); },
+    refresh: function () {
+      refreshWeather();
+      refreshPrices();
+      refreshRecs();
+      refreshAdded();
+      refreshRecentMeta();
+      if (window.Trakt && Trakt.connected()) Trakt.refresh(function () { refreshRecentMeta(); changed(); });
+    },
     settingsChanged: function () { pricesAt = 0; refreshPrices(); changed(); },
     findCity: findCity,
     /** Another city picked: its weather now (none shown until it comes). */
@@ -621,9 +834,14 @@ var Data = (function () {
     checkKey: checkKey,
     /** A key typed (or removed) on the TV: the picks come again with it, or go. */
     keyChanged: function () { KEY = Prefs.tmdbKey(); recsError = ''; failedAt = 0; refreshRecs(); changed(); },
+    watchmodeChanged: function () { addedAt = 0; fetchingAdded = false; refreshAdded(); changed(); },
     recsError: function () { return recsError; },
     picks: now,
     showcase: all,
+    recent: recent,
+    added: added,
+    continueShows: continueShows,
+    addedIsFallback: function () { return addedFallback; },
     image: function (path, size) { return path ? 'https://image.tmdb.org/t/p/' + (size || 'w1280') + path : ''; },
 
     /** Night at the location: from sunset to sunrise (the last forecast; without one, 6:00 and 18:00). */
