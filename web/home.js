@@ -594,39 +594,38 @@
   // MARK: - Shelf
 
   var shelfFirst = 0, tileStep = 0, tileLeft = 0;
+  var ICON = 100, ICON_GAP = 32, DOCK_PAD = 16, DOCK_TOP = 924, ICON_CLIP = squircle(ICON);
 
   function renderShelf() {
-    var n = Math.min(shelf.length, SHELF_VISIBLE), gap = 48, pad = 40;
-    // 16:9 tiles, as on Android: never taller than 126, and the glass keeps its bottom edge.
-    var tw = Math.min(126 * 16 / 9, (1760 - Math.max(0, n - 1) * gap) / Math.max(1, n)), th = tw * 9 / 16;
-    var width = n * tw + Math.max(0, n - 1) * gap, left = (1920 - width) / 2;
+    var n = Math.min(shelf.length, SHELF_VISIBLE);
+    // Square icons, as on an iPhone's dock, in a glass bar that keeps its bottom edge.
+    var width = n * ICON + Math.max(0, n - 1) * ICON_GAP, left = (1920 - width) / 2;
     var platter = $('platter');
     platter.style.display = n ? '' : 'none';
-    platter.style.left = (left - pad) + 'px';
-    platter.style.width = (width + 2 * pad) + 'px';
-    platter.style.top = (814 + 126 - th) + 'px';
-    platter.style.height = (th + 2 * pad) + 'px';
+    platter.style.left = (left - DOCK_PAD) + 'px';
+    platter.style.width = (width + 2 * DOCK_PAD) + 'px';
+    platter.style.top = DOCK_TOP + 'px';
+    platter.style.height = (ICON + 2 * DOCK_PAD) + 'px';
     var tiles = $('tiles');
     tiles.innerHTML = '';
-    tileStep = tw + gap;
+    tileStep = ICON + ICON_GAP;
     tileLeft = left;
     shelfFirst = Math.max(0, Math.min(shelfFirst, shelf.length - n));
     for (var i = 0; i < shelf.length; i++) {
-      var t = el('div', 'tile', tiles);
-      t.style.top = (854 + 126 - th) + 'px';
-      t.style.width = tw + 'px';
-      t.style.height = th + 'px';
-      face(shelf[i], t, wordFit(shelf[i].title, tw, 30));
+      var t = el('div', 'tile', tiles), f = el('div', 'face', t);
+      t.style.top = (DOCK_TOP + DOCK_PAD) + 'px';
+      t.style.width = t.style.height = ICON + 'px';
+      clip(f, ICON_CLIP);
+      face(shelf[i], f, wordFit(shelf[i].title, ICON, 22));
       hover(t, Z.SHELF, i);
     }
-    // More apps than fit: a small arrow inside the glass's edge on each side that has more, where no tile reaches
-    // even focused (inside the screen's safe area, as on Android).
+    // More apps than fit: a small arrow just outside the glass on each side that has more.
     platter.innerHTML = '';
     for (var a = 0; a < 2; a++) {
       var arrow = sym('chevron_right', platter);
       arrow.className += a ? ' more' : ' more back';
-      arrow.style.left = (a ? width + 2 * pad - 14 : 14) - 8.5 + 'px';
-      arrow.style.top = (pad + th / 2 - 8.5) + 'px';
+      arrow.style.left = (a ? width + 2 * DOCK_PAD + 12 : -29) + 'px';
+      arrow.style.top = (DOCK_PAD + ICON / 2 - 8.5) + 'px';
     }
     st.shelf = Math.min(st.shelf, Math.max(0, shelf.length - 1));
     placeTiles();
