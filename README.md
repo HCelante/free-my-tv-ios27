@@ -11,6 +11,16 @@ Open source. Built with Claude Code. One button to undo.
 
 [**freemytv.io**](https://freemytv.io) · [Install](#install) · [LG TVs](#lg-tvs-webos) · [Samsung TVs](#samsung-tvs-tizen) · [Any TV](#any-tv) · [Make it yours](#make-it-yours)
 
+</div>
+
+> **This fork** keeps upstream Free My TV and swaps the LG/Samsung home for an **iOS 27–inspired Liquid Glass** layout: tabs *Explore / Movies / Shows*, recently watched (local history + optional Trakt), and newly added titles (optional Watchmode). Secrets stay in `config.properties` (gitignored). Interactive mock with sample data: [`preview-ios27.html`](preview-ios27.html).
+
+<div align="center">
+
+<img src="docs/assets/ios27-preview.png" width="880" alt="Fork home: Liquid Glass Explore tab with recently watched and the app dock">
+
+<sub>Upstream home (for comparison):</sub>
+
 <img src=".github/preview.webp" width="880" alt="The Free My TV home screen: a glass shelf of apps, trending picks, and a drawer with the weather and crypto prices">
 
 </div>
@@ -177,7 +187,11 @@ On LG and Samsung you can also type it on the TV, in *Home Settings* → *TMDB k
 
 ### Opening a title, not just its app (optional)
 
-With a free [Watchmode](https://api.watchmode.com/) key (`watchmode_key=` in `config.properties`), a pick opens its own page in the streaming app instead of the app's home. The free plan (2,500 credits a month) is enough: each title costs two requests the first time and is remembered after that. It works where the app takes the title's web address (tested: Prime Video and JioHotstar); where it doesn't, the pick just opens the app, as without a key.
+With a free [Watchmode](https://api.watchmode.com/) key (`watchmode_key=` in `config.properties`), a pick opens its own page in the streaming app instead of the app's home. The free plan (2,500 credits a month) is enough: each title costs two requests the first time and is remembered after that. It works where the app takes the title's web address (tested: Prime Video and JioHotstar); where it doesn't, the pick just opens the app, as without a key. On LG and Samsung the same key also fills *Movies* and *Shows* with titles newly added to your apps (US release dates on the free plan; availability is checked for your country via TMDB). You can type the key on the TV in *Home Settings* → *Watchmode key*.
+
+### Recently watched (optional, LG and Samsung)
+
+Explore shows what you watched recently. Sources: a local history of titles you open from Free My TV’s cards, plus [Trakt](https://trakt.tv/oauth/applications) when you set `trakt_client_id` / `trakt_client_secret` and connect in *Home Settings* → *Trakt*. Netflix, Prime Video, Max and Disney+ on the TV do not report watches to Trakt; for those apps Explore relies on the local history (and anything you scrobble from other apps or the Trakt phone app).
 
 ### Your own photos (optional)
 
