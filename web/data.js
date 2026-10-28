@@ -346,6 +346,14 @@ var Data = (function () {
     }, key);
   }
 
+  /** Asks Watchmode whether a key works before it's saved: done(error), with error.rejected on 401. */
+  function checkWatchmodeKey(key, done) {
+    get('https://api.watchmode.com/v1/status/', {'X-API-Key': key, Accept: 'application/json'}, function (err) {
+      if (err && /rejected|401|HTTP 401/.test(err.message)) err.rejected = true;
+      done(err || null);
+    });
+  }
+
   var cache = stored('recs') || {};
   var picks = cache.picks || [], listAt = cache.listAt || 0, period = cache.period, listLang = cache.lang || '', stamp = cache.stamp || '';
   var fetchingRecs = false, failedAt = 0, recsError = '';
@@ -832,6 +840,7 @@ var Data = (function () {
     activeCoins: activeCoins,
     hasKey: function () { return !!KEY; },
     checkKey: checkKey,
+    checkWatchmodeKey: checkWatchmodeKey,
     /** A key typed (or removed) on the TV: the picks come again with it, or go. */
     keyChanged: function () { KEY = Prefs.tmdbKey(); recsError = ''; failedAt = 0; refreshRecs(); changed(); },
     watchmodeChanged: function () { addedAt = 0; fetchingAdded = false; refreshAdded(); changed(); },

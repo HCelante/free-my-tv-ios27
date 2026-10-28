@@ -350,11 +350,11 @@
 
   // MARK: - Focus
 
-  var Z = {TOP: 'top', CARDS: 'cards', SHELF: 'shelf', DRAWER: 'drawer', APPS: 'apps', SETTINGS: 'settings', EDIT: 'edit', LANG: 'lang', CITY: 'city', KEY: 'key', ABOUT: 'about'};
-  var st = {zone: Z.SHELF, top: 0, tab: 0, card: 0, shelf: 0, drawer: 0, grid: 0, row: 0, edit: 0, lang: 0, city: 0, key: 0};
+  var Z = {TOP: 'top', CARDS: 'cards', SHELF: 'shelf', DRAWER: 'drawer', APPS: 'apps', SETTINGS: 'settings', EDIT: 'edit', LANG: 'lang', CITY: 'city', KEY: 'key', TRAKT: 'trakt', ABOUT: 'about'};
+  var st = {zone: Z.SHELF, top: 0, tab: 0, card: 0, shelf: 0, drawer: 0, grid: 0, row: 0, edit: 0, lang: 0, city: 0, key: 0, trakt: 0};
   var cards = [];
 
-  function sheetOpen() { return st.zone === Z.APPS || st.zone === Z.SETTINGS || st.zone === Z.EDIT || st.zone === Z.LANG || st.zone === Z.CITY || st.zone === Z.KEY || st.zone === Z.ABOUT; }
+  function sheetOpen() { return st.zone === Z.APPS || st.zone === Z.SETTINGS || st.zone === Z.EDIT || st.zone === Z.LANG || st.zone === Z.CITY || st.zone === Z.KEY || st.zone === Z.TRAKT || st.zone === Z.ABOUT; }
 
   function updateFocus() {
     var i, list;
@@ -388,6 +388,7 @@
     if (langHint) langHint.textContent = (st.lang + 1) + ' / ' + languageChoices().length + '  ·  ' + tr('OK picks, Back cancels.');
     focusRows($('citypick'), st.city, st.zone === Z.CITY);
     focusRows($('keypick'), st.key, st.zone === Z.KEY);
+    focusRows($('traktpick'), st.trakt, st.zone === Z.TRAKT);
     setClass(body, 'drawer-open', st.zone === Z.DRAWER);
   }
 
@@ -416,8 +417,6 @@
   }
 
   // MARK: - Top: time and weather, tabs, buttons, quotes
-
-  var TAB_KIND = [null, 'movie', 'tv'];
 
   function renderTop() {
     var tabs = $('tabs');
@@ -918,6 +917,8 @@
     closeField('keypick');
     setClass($('citypick'), 'open', false);
     setClass($('keypick'), 'open', false);
+    setClass($('traktpick'), 'open', false);
+    if (window.Trakt) Trakt.cancelLogin();
     langHint = null;
     st.zone = Z.SHELF;
     updateFocus();
@@ -957,7 +958,23 @@
       })(i);
     }
     rows.push({label: tr('TMDB key'), value: Prefs.tmdbKey().length >= 4 ? '•••• ' + Prefs.tmdbKey().slice(-4) : tr('Not set'), opens: true, tmdb: true,
-      step: function (d) { if (d >= 0) openKey(); }});
+      step: function (d) { if (d >= 0) openKey('tmdb'); }});
+    if (window.Trakt && Trakt.configured()) {
+      rows.push({
+        label: tr('Trakt'),
+        value: Trakt.connected() ? Trakt.account() : (Trakt.error() || tr('Not connected')),
+        opens: true,
+        trakt: true,
+        step: function (d) { if (d >= 0) openTrakt(); }
+      });
+    }
+    rows.push({
+      label: tr('Watchmode key'),
+      value: Prefs.watchmodeKey().length >= 4 ? '•••• ' + Prefs.watchmodeKey().slice(-4) : tr('Not set'),
+      opens: true,
+      watchmode: true,
+      step: function (d) { if (d >= 0) openKey('watchmode'); }
+    });
     var sv = Data.services();
     if (sv.length) {
       var someOff = false;   // only the services this TV has count
@@ -1190,22 +1207,42 @@
     else closeCities(true);
   }
 
-  // MARK: - TMDB key: typed on the TV, so builds without one (the releases) get the picks too; TMDB checks it first
+  // MARK: - API keys (TMDB and Watchmode): typed on the TV; checked before save
 
-  var keyStatus = '', keyWarn = false, keyTimer = 0, keySeq = 0, keyAsking = false;
+  var keyStatus = '', keyWarn = false, keyTimer = 0, keySeq = 0, keyAsking = false, keyKind = 'tmdb';
 
-  function keyRows() { return keyAsking ? 2 : Prefs.tmdbKeyOnTV() ? 3 : 2; }
+  function keyOnTV() { return keyKind === 'watchmode' ? Prefs.watchmodeKeyOnTV() : Prefs.tmdbKeyOnTV(); }
+
+  function keyRows() { return keyAsking ? 2 : keyOnTV() ? 3 : 2; }
+
+  function keyTitle() {
+    if (keyAsking) return keyKind === 'watchmode' ? tr('Remove the Watchmode key?') : tr('Remove the TMDB key?');
+    return keyKind === 'watchmode' ? tr('Watchmode key') : tr('TMDB key');
+  }
 
   function keySteps() {
+    if (keyKind === 'watchmode') {
+      return tr('A free Watchmode key fills Movies and Shows with titles newly added to your apps.') + '\n'
+        + tr('Free, and it takes two minutes:') + '\n1. ' + tr('Create an account at watchmode.com.')
+        + '\n2. ' + tr('Copy the API key from your account page.');
+    }
     return tr("The key brings the picks: what's trending on your streaming apps, with their photos on the screensaver.") + '\n'
       + tr('Free, and it takes two minutes:') + '\n1. ' + tr('Create an account at themoviedb.org.')
       + '\n2. ' + tr('Open Settings → API and request a developer key.');
   }
 
+  function keyPlaceholder() {
+    return keyKind === 'watchmode' ? tr('Watchmode API key') : tr('API Read Access Token or API Key');
+  }
+
+  function keyChecking() {
+    return keyKind === 'watchmode' ? tr('Checking the key with Watchmode…') : tr('Checking the key with TMDB…');
+  }
+
   function renderKey() {
     var box = $('keypick').firstChild, old = fieldOf('keypick'), typed = old ? old.value : '', inField = typingIn('keypick');
     box.innerHTML = '';
-    el('div', 'title', box, keyAsking ? tr('Remove the TMDB key?') : tr('TMDB key'));
+    el('div', 'title', box, keyTitle());
     var list = el('div', 'list', box), holder = el('div', 'rows', list);
     list.style.height = keyRows() * 78 + 'px';
     if (keyAsking) {
@@ -1214,21 +1251,22 @@
       updateFocus();
       return;
     }
-    var keyField = textField(holder, Z.KEY, typed, tr('API Read Access Token or API Key'), tr('TMDB key'));
-    // A v3 key is lowercase hex: the TV's keyboard mustn't capitalize it (the city's field wants capitals).
+    var keyField = textField(holder, Z.KEY, typed, keyPlaceholder(), keyTitle());
+    // Keys are case-sensitive: the TV's keyboard mustn't capitalize them (the city's field wants capitals).
     keyField.setAttribute('autocapitalize', 'none');
     keyField.setAttribute('autocorrect', 'off');
     var save = el('div', 'row', holder, tr('Save'));
     sym('chevron_right', el('span', 'value', save));
     hover(save, Z.KEY, 1);
-    if (Prefs.tmdbKeyOnTV()) hover(el('div', 'row', holder, tr('Remove the key')), Z.KEY, 2);
+    if (keyOnTV()) hover(el('div', 'row', holder, tr('Remove the key')), Z.KEY, 2);
     if (keyStatus) setClass(el('div', 'hint', box, keyStatus), 'warn', keyWarn);
     el('div', 'hint steps', box, keySteps());
     if (inField) openField('keypick');
     updateFocus();
   }
 
-  function openKey() {
+  function openKey(kind) {
+    keyKind = kind === 'watchmode' ? 'watchmode' : 'tmdb';
     setClass($('settings'), 'open', false);
     st.zone = Z.KEY;
     st.key = 0;
@@ -1244,7 +1282,7 @@
     keyStatus = text;
     keyWarn = !!warn;
     clearTimeout(keyTimer);
-    if (text && text !== tr('Checking the key with TMDB…')) keyTimer = setTimeout(function () {
+    if (text && text !== keyChecking()) keyTimer = setTimeout(function () {
       keyStatus = '';
       var line = st.zone === Z.KEY && $('keypick').querySelector('.hint:not(.steps)');
       if (line) line.parentNode.removeChild(line);
@@ -1261,28 +1299,48 @@
     var f = fieldOf('keypick'), typed = f ? f.value : '', key = cleanKey(typed);
     closeField('keypick');
     if (!typed.replace(/\s+/g, '')) { st.key = 0; openField('keypick'); updateFocus(); return; }
-    if (keyStatus === tr('Checking the key with TMDB…')) return;
-    if (!key) { setKeyStatus(tr("That doesn't look like a TMDB key."), true); return; }
-    setKeyStatus(tr('Checking the key with TMDB…'));
-    var mine = ++keySeq;   // an answer for a sheet already closed is dropped
-    Data.checkKey(key, function (err) {
+    if (keyStatus === keyChecking()) return;
+    if (!key) {
+      setKeyStatus(keyKind === 'watchmode' ? tr("That doesn't look like a Watchmode key.") : tr("That doesn't look like a TMDB key."), true);
+      return;
+    }
+    setKeyStatus(keyChecking());
+    var mine = ++keySeq;
+    var check = keyKind === 'watchmode' ? Data.checkWatchmodeKey : Data.checkKey;
+    check(key, function (err) {
       if (mine !== keySeq || st.zone !== Z.KEY) return;
-      if (err) { setKeyStatus(err.rejected ? tr('TMDB refused this key.') : trf("Couldn't reach TMDB: {error}", {error: err.message}), true); return; }
-      Prefs.set('tmdbKey', key);
+      if (err) {
+        setKeyStatus(err.rejected
+          ? (keyKind === 'watchmode' ? tr('Watchmode refused this key.') : tr('TMDB refused this key.'))
+          : trf("Couldn't reach the service: {error}", {error: err.message}), true);
+        return;
+      }
+      if (keyKind === 'watchmode') {
+        Prefs.set('watchmodeKey', key);
+        Data.watchmodeChanged();
+      } else {
+        Prefs.set('tmdbKey', key);
+        Data.keyChanged();
+      }
       if (fieldOf('keypick')) fieldOf('keypick').value = '';
-      Data.keyChanged();
       setKeyStatus(tr('Saved. The picks arrive in a moment.'));
     });
   }
 
   /** Back to config.properties' key (none in the releases): the picks go. */
   function removeKey() {
+    if (keyKind === 'watchmode') {
+      Prefs.set('watchmodeKey', undefined);
+      closeKey();
+      Data.watchmodeChanged();
+      return;
+    }
     Prefs.set('tmdbKey', undefined);   // left out of the saved settings
     closeKey();
     Data.keyChanged();
   }
 
-  /** Back on the TMDB key row of Home Settings. */
+  /** Back on the matching key row of Home Settings. */
   function closeKey() {
     closeField('keypick');
     setClass($('keypick'), 'open', false);
@@ -1290,10 +1348,12 @@
     clearTimeout(keyTimer);
     keyStatus = '';
     keyAsking = false;
-    var f = fieldOf('keypick');
+    var f = fieldOf('keypick'), kind = keyKind;
     if (f) f.value = '';
     openSettings();
-    for (var i = 0; i < rowsNow.length; i++) if (rowsNow[i].tmdb) st.row = i;
+    for (var i = 0; i < rowsNow.length; i++) {
+      if ((kind === 'watchmode' && rowsNow[i].watchmode) || (kind === 'tmdb' && rowsNow[i].tmdb)) st.row = i;
+    }
     updateFocus();
   }
 
@@ -1310,6 +1370,105 @@
     else if (st.key === 0) openField('keypick');
     else if (st.key === 1) saveKey();
     else askRemoveKey(true);
+  }
+
+  // MARK: - Trakt: device login on the TV
+
+  var traktCode = '', traktUrl = '', traktStatus = '';
+
+  function traktRows() {
+    if (Trakt.connected()) return 1;
+    return traktCode ? 1 : 1;
+  }
+
+  function renderTrakt() {
+    var box = $('traktpick').firstChild;
+    box.innerHTML = '';
+    el('div', 'title', box, tr('Trakt'));
+    var list = el('div', 'list', box), holder = el('div', 'rows', list);
+    list.style.height = Math.max(1, traktRows()) * 78 + 'px';
+    if (Trakt.connected()) {
+      hover(el('div', 'row', holder, tr('Disconnect')), Z.TRAKT, 0);
+      el('div', 'hint', box, Trakt.account() || tr('Connected'));
+    } else if (traktCode) {
+      hover(el('div', 'row', holder, tr('Cancel')), Z.TRAKT, 0);
+      el('div', 'hint', box, tr('Open trakt.tv/activate and enter:') + '\n' + traktCode
+        + (traktUrl ? '\n' + traktUrl : '')
+        + (traktStatus ? '\n' + traktStatus : ''));
+    } else {
+      hover(el('div', 'row', holder, tr('Connect')), Z.TRAKT, 0);
+      if (traktStatus) el('div', 'hint', box, traktStatus);
+      else el('div', 'hint steps', box, tr('Connect Trakt to show what you watched on apps that report to it.'));
+    }
+    updateFocus();
+  }
+
+  function openTrakt() {
+    setClass($('settings'), 'open', false);
+    st.zone = Z.TRAKT;
+    st.trakt = 0;
+    traktCode = '';
+    traktUrl = '';
+    traktStatus = Trakt.error() || '';
+    $('traktpick').firstChild.innerHTML = '';
+    renderTrakt();
+    setClass($('traktpick'), 'open', true);
+  }
+
+  function closeTrakt() {
+    Trakt.cancelLogin();
+    setClass($('traktpick'), 'open', false);
+    traktCode = '';
+    traktUrl = '';
+    traktStatus = '';
+    openSettings();
+    for (var i = 0; i < rowsNow.length; i++) if (rowsNow[i].trakt) st.row = i;
+    updateFocus();
+  }
+
+  function activateTrakt() {
+    if (Trakt.connected()) {
+      Trakt.logout();
+      Data.refresh();
+      closeTrakt();
+      return;
+    }
+    if (traktCode) {
+      Trakt.cancelLogin();
+      traktCode = '';
+      traktUrl = '';
+      traktStatus = '';
+      renderTrakt();
+      return;
+    }
+    traktStatus = tr('Connecting…');
+    renderTrakt();
+    Trakt.beginLogin(function (err, info) {
+      if (st.zone !== Z.TRAKT) return;
+      if (err) { traktStatus = err.message || tr('Not connected'); renderTrakt(); return; }
+      traktCode = info.userCode || '';
+      traktUrl = info.verificationUrl || 'https://trakt.tv/activate';
+      traktStatus = '';
+      renderTrakt();
+    });
+  }
+
+  if (window.Trakt) {
+    Trakt.onChange(function () {
+      if (st.zone === Z.TRAKT) {
+        if (Trakt.connected()) {
+          traktCode = '';
+          traktUrl = '';
+          traktStatus = '';
+          Data.refresh();
+          closeTrakt();
+          return;
+        }
+        renderTrakt();
+      }
+      if (st.zone === Z.SETTINGS) renderSettings();
+      renderCards();
+    });
   }
 
   // MARK: - About this TV: what to quote when reporting a problem, without LG's or Samsung's slow menus
@@ -1470,6 +1629,9 @@
       case Z.KEY:
         activateKey();
         return;
+      case Z.TRAKT:
+        activateTrakt();
+        return;
       case Z.ABOUT:
         closeAbout();
         return;
@@ -1535,6 +1697,9 @@
       case Z.KEY:
         if (dy) st.key = Math.max(0, Math.min(keyRows() - 1, st.key + dy));
         break;
+      case Z.TRAKT:
+        if (dy) st.trakt = Math.max(0, Math.min(traktRows() - 1, st.trakt + dy));
+        break;
     }
     updateFocus();
   }
@@ -1550,6 +1715,7 @@
     if (st.zone === Z.LANG) { closeLanguages(false); return; }
     if (st.zone === Z.CITY) { closeCities(false); return; }
     if (st.zone === Z.KEY) { if (keyAsking) askRemoveKey(false); else closeKey(); return; }
+    if (st.zone === Z.TRAKT) { closeTrakt(); return; }
     if (st.zone === Z.ABOUT) { closeAbout(); return; }
     if (sheetOpen()) { closeSheets(); return; }
     if (st.zone === Z.DRAWER) { closeDrawer(); return; }
@@ -1560,7 +1726,7 @@
   /** The pointer focuses what it's over (the Magic Remote, or a mouse when previewing). */
   function hover(node, zone, index) {
     node.onmouseover = function () {
-      if (saverOn || (sheetOpen() !== (zone === Z.APPS || zone === Z.SETTINGS || zone === Z.EDIT || zone === Z.LANG || zone === Z.CITY || zone === Z.KEY || zone === Z.ABOUT))) return;
+      if (saverOn || (sheetOpen() !== (zone === Z.APPS || zone === Z.SETTINGS || zone === Z.EDIT || zone === Z.LANG || zone === Z.CITY || zone === Z.KEY || zone === Z.TRAKT || zone === Z.ABOUT))) return;
       if (zone === Z.DRAWER && st.zone !== Z.DRAWER) return;
       if (zone !== Z.DRAWER && st.zone === Z.DRAWER && zone !== Z.SHELF) return;
       if (zone === Z.TOP && index < 3 && !Data.hasKey()) return;   // the tabs are hidden without the picks
@@ -1576,6 +1742,7 @@
       else if (zone === Z.LANG) st.lang = index;
       else if (zone === Z.CITY) st.city = index;
       else if (zone === Z.KEY) st.key = index;
+      else if (zone === Z.TRAKT) st.trakt = index;
       updateFocus();
     };
     node.onclick = function () { node.onmouseover(); activate(); };

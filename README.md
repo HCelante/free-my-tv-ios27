@@ -142,7 +142,8 @@ The first values come from `config.properties`, created by the first build (Goog
 |---|---|---|
 | `tmdb_key` | Your free TMDB key, for the picks | empty |
 | `tmdb_region` | Your country (two letters): which titles are on which app | `US` |
-| `watchmode_key` | Optional, free [Watchmode](https://api.watchmode.com/) key: a pick opens the title's page in its app | empty |
+| `watchmode_key` | Optional, free [Watchmode](https://api.watchmode.com/) key: deep links into a title's page, and “newly added” on the Movies/Shows tabs | empty |
+| `trakt_client_id`, `trakt_client_secret` | Optional [Trakt](https://trakt.tv/oauth/applications) app credentials: recently watched on Explore (device login on the TV) | empty |
 | `plex_url` and `plex_token` | Optional, your Plex server's `plex.direct` address and token: its newest titles join the picks and open on their page | empty |
 | `latitude`, `longitude` | Your city, for the weather and the sunset | New York |
 | `city` | The name on the weather card | `Weather` |
