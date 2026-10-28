@@ -2,26 +2,24 @@
 
 <img src="docs/assets/icon-512.png" width="96" alt="">
 
-# Free My TV
+# Free My TV · iOS 27
 
-**A fast, ad-free home screen for Google TV, LG and Samsung TVs.**
+**Fork of [Free My TV](https://github.com/simbasjungles/free-my-tv) with an iOS 27–inspired Liquid Glass home for LG and Samsung.**
 
-Trending picks from your own apps, the weather at a glance, and a look that follows the sunset.<br>
-Open source. Built with Claude Code. One button to undo.
+Explore / Movies / Shows · recently watched · newly added · light by day, dark by night.<br>
+Same install path as upstream. Secrets stay in `config.properties` (gitignored).
 
-[**freemytv.io**](https://freemytv.io) · [Install](#install) · [LG TVs](#lg-tvs-webos) · [Samsung TVs](#samsung-tvs-tizen) · [Any TV](#any-tv) · [Make it yours](#make-it-yours)
+[Preview](preview-ios27.html) · [Upstream](https://github.com/simbasjungles/free-my-tv) · [Install](#install) · [LG](#lg-tvs-webos) · [Samsung](#samsung-tvs-tizen)
 
-</div>
+**Dark**
 
-> **This fork** keeps upstream Free My TV and swaps the LG/Samsung home for an **iOS 27–inspired Liquid Glass** layout: tabs *Explore / Movies / Shows*, recently watched (local history + optional Trakt), and newly added titles (optional Watchmode). Secrets stay in `config.properties` (gitignored). Interactive mock with sample data: [`preview-ios27.html`](preview-ios27.html).
+<img src="docs/assets/ios27-preview-dark.gif" width="720" alt="Animated Liquid Glass home in dark mode: tabs and recently watched">
 
-<div align="center">
+**Light**
 
-<img src="docs/assets/ios27-preview.png" width="880" alt="Fork home: Liquid Glass Explore tab with recently watched and the app dock">
+<img src="docs/assets/ios27-preview-light.gif" width="720" alt="Animated Liquid Glass home in light mode: tabs and recently watched">
 
-<sub>Upstream home (for comparison):</sub>
-
-<img src=".github/preview.webp" width="880" alt="The Free My TV home screen: a glass shelf of apps, trending picks, and a drawer with the weather and crypto prices">
+<sub>Interactive mock (sample data): open [`preview-ios27.html`](preview-ios27.html) in a browser.</sub>
 
 </div>
 
