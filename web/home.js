@@ -701,6 +701,8 @@
 
   var shelfFirst = 0, tileStep = 0, tileLeft = 0;
   var ICON = 100, ICON_GAP = 32, DOCK_PAD = 16, DOCK_TOP = 924, ICON_CLIP = squircle(ICON);
+  // Tile corner (home.css .tile) plus the glass pad: the bar follows the same curve as the icons.
+  var ICON_RADIUS = 23, PLATTER_RADIUS = ICON_RADIUS + DOCK_PAD;
 
   function renderShelf() {
     var n = Math.min(shelf.length, SHELF_VISIBLE);
@@ -712,6 +714,7 @@
     platter.style.width = (width + 2 * DOCK_PAD) + 'px';
     platter.style.top = DOCK_TOP + 'px';
     platter.style.height = (ICON + 2 * DOCK_PAD) + 'px';
+    platter.style.borderRadius = PLATTER_RADIUS + 'px';
     var tiles = $('tiles');
     tiles.innerHTML = '';
     tileStep = ICON + ICON_GAP;
