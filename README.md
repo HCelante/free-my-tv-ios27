@@ -11,15 +11,15 @@ Same install path as upstream. Secrets stay in `config.properties` (gitignored).
 
 [Preview](preview-ios27.html) · [Upstream](https://github.com/simbasjungles/free-my-tv) · [Install](#install) · [LG](#lg-tvs-webos) · [Samsung](#samsung-tvs-tizen)
 
-**Dark**
+**Dark** · [mp4](docs/assets/ios27-preview-dark.mp4)
 
-<img src="docs/assets/ios27-preview-dark.gif" width="720" alt="Animated Liquid Glass home in dark mode: tabs and recently watched">
+<img src="docs/assets/ios27-home-dark.gif" width="720" alt="Liquid Glass home in dark mode, browsing titles at a TV remote pace">
 
-**Light**
+**Light** · [mp4](docs/assets/ios27-preview-light.mp4)
 
-<img src="docs/assets/ios27-preview-light.gif" width="720" alt="Animated Liquid Glass home in light mode: tabs and recently watched">
+<img src="docs/assets/ios27-home-light.gif" width="720" alt="Liquid Glass home in light mode, browsing titles at a TV remote pace">
 
-<sub>Interactive mock (sample data): open [`preview-ios27.html`](preview-ios27.html) in a browser.</sub>
+<sub>GitHub’s image proxy sometimes keeps an old GIF; the [dark](docs/assets/ios27-preview-dark.mp4) / [light](docs/assets/ios27-preview-light.mp4) MP4s keep the real timing. Interactive mock: [`preview-ios27.html`](preview-ios27.html).</sub>
 
 </div>
 
